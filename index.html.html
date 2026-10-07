@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thử Thách 30 Giây - Quản Lý & Trắc Nghiệm</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@400;600;700;800&display=swap');
+        body {
+            font-family: 'Lexend', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #311042 100%);
+            min-height: 100vh;
+        }
+        .timer-circle {
+            transition: stroke-dashoffset 1s linear, stroke 0.3s ease;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .btn-option {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-option:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+        }
+        .pulse-danger {
+            animation: pulse-red 1s infinite;
+        }
+        @keyframes pulse-red {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.5);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center p-4 text-white min-h-screen relative">
+
+    <!-- Nút chuyển đổi giao diện Admin/User ở góc trên -->
+    <div class="fixed top-4 right-4 z-50">
+        <button id="toggle-admin-btn" onclick="openAdminModal()" class="bg-indigo-600/80 hover:bg-indigo-600 text-white font-semibold py-2 px-4 rounded-xl backdrop-blur-md border border-indigo-400/30 shadow-lg text-sm transition">
+            <i class="fa-solid fa-user-shield mr-1.5"></i> Trang Admin
+        </button>
+    </div>
+
+    <!-- Container Chính -->
+    <div id="game-card" class="glass-panel w-full max-w-2xl rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden my-auto">
+        
+        <!-- Màn Hình Đăng Nhập Người Chơi -->
+        <div id="start-screen" class="text-center py-4">
+            <div class="inline-flex items-center justify-center w-16 h-16 bg-indigo-600/30 rounded-full mb-3 border-2 border-indigo-400/50">
+                <i class="fa-solid font-bold text-3xl text-indigo-400 fa-stopwatch"></i>
+            </div>
+            <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2 bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-300 to-pink-400">
+                THỬ THÁCH 30 GIÂY
+            </h1>
+            <p class="text-slate-300 mb-6 max-w-md mx-auto text-xs sm:text-sm">
+                Nhập thông tin sinh viên để bắt đầu tham gia làm bài trắc nghiệm.
+            </p>
+
+            <form id="player-form" onsubmit="startGame(event)" class="space-y-4 max-w-md mx-auto text-left">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Họ và Tên <span class="text-rose-400">*</span></label>
+                    <input type="text" id="player-name" required placeholder="Nguyễn Văn A" class="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500">
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Mã Số Sinh Viên <span class="text-rose-400">*</span></label>
+                        <input type="text" id="player-id" required placeholder="SV123456" class="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Ngày Sinh <span class="text-rose-400">*</span></label>
+                        <input type="date" id="player-dob" required class="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold py-3.5 px-8 rounded-2xl shadow-lg transition transform active:scale-95 text-base mt-2">
+                    BẮT ĐẦU CHƠI <i class="fa-solid fa-play ml-2"></i>
+                </button>
+            </form>
+        </div>
+
+        <!-- Màn Hình Chơi Game -->
+        <div id="quiz-screen" class="hidden">
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-700/50">
+                <div>
+                    <span id="question-tracker" class="text-xs font-semibold uppercase tracking-wider text-indigo-400">Câu hỏi 1/10</span>
+                    <div id="score-display" class="text-xl font-bold text-amber-400">Điểm: 0</div>
+                </div>
+
+                <div class="relative w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center" id="timer-container">
+                    <svg class="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                        <path class="text-slate-700" stroke-width="3" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                        <path id="timer-progress" class="timer-circle text-indigo-500" stroke-width="3.5" stroke-dasharray="100, 100" stroke-linecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                    </svg>
+                    <span id="timer-text" class="absolute text-lg sm:text-xl font-extrabold text-white">30</span>
+                </div>
+            </div>
+
+            <div class="mb-5">
+                <h2 id="question-text" class="text-lg sm:text-xl font-bold text-slate-100 min-h-[3.5rem] flex items-center leading-snug">
+                    Đang tải câu hỏi...
+                </h2>
+            </div>
+
+            <div id="options-container" class="grid grid-cols-1 gap-2.5 mb-4"></div>
+
+            <div id="explanation-box" class="hidden p-3.5 rounded-xl bg-slate-800/90 border border-slate-700 text-xs sm:text-sm text-slate-300">
+                <span class="font-bold text-amber-400 block mb-1">Giải thích từ giáo trình:</span>
+                <p id="explanation-text"></p>
+            </div>
+
+            <div class="mt-4 text-right">
+                <button id="next-btn" onclick="nextQuestion()" class="hidden bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 px-5 rounded-xl transition shadow-md text-sm">
+                    Câu tiếp theo <i class="fa-solid fa-arrow-right ml-1"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Màn Hình Kết Quả -->
+        <div id="result-screen" class="hidden text-center py-6">
+            <div class="inline-flex items-center justify-center w-20 h-20 bg-amber-500/20 rounded-full mb-4 border-2 border-amber-400/50">
+                <i class="fa-solid fa-trophy text-4xl text-amber-400"></i>
+            </div>
+            <h2 class="text-2xl sm:text-3xl font-bold mb-1">HOÀN THÀNH THỬ THÁCH!</h2>
+            <p id="result-player-info" class="text-indigo-300 mb-4 text-sm font-medium"></p>
+
+            <div class="bg-slate-800/50 rounded-2xl p-5 mb-6 max-w-sm mx-auto border border-slate-700">
+                <div class="text-4xl font-black text-amber-400 mb-1" id="final-score">0</div>
+                <div class="text-xs text-slate-400 uppercase tracking-widest font-semibold mb-3">Tổng Điểm</div>
+                <div class="flex justify-around text-slate-300 border-t border-slate-700 pt-3 text-xs sm:text-sm">
+                    <div>Đúng: <span id="correct-count" class="font-bold text-emerald-400">0</span></div>
+                    <div>Hết giờ: <span id="timeout-count" class="font-bold text-rose-400">0</span></div>
+                </div>
+            </div>
+
+            <button onclick="restartGame()" class="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold py-3 px-7 rounded-2xl shadow-lg transition transform active:scale-95 text-base">
+                CHƠI LẠI TRÒ CHƠI <i class="fa-solid fa-rotate-right ml-2"></i>
+            </button>
+        </div>
+
+        <!-- Dashboard Quản Trị (Admin Panel) -->
+        <div id="admin-panel" class="hidden py-2">
+            <div class="flex items-center justify-between mb-4 border-b border-slate-700 pb-3">
+                <h2 class="text-xl font-bold text-indigo-400"><i class="fa-solid fa-user-gear mr-2"></i>Quản Trị Hệ Thống</h2>
+                <button onclick="closeAdminPanel()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+
+            <!-- Tab Navigation -->
+            <div class="flex border-b border-slate-700 mb-4 text-sm">
+                <button id="tab-btn-results" onclick="switchAdminTab('results')" class="py-2 px-4 border-b-2 border-indigo-500 text-indigo-400 font-semibold">Kết Quả Người Chơi</button>
+                <button id="tab-btn-questions" onclick="switchAdminTab('questions')" class="py-2 px-4 border-b-2 border-transparent text-slate-400 hover:text-slate-200">Quản Lý Câu Hỏi</button>
+                <button id="tab-btn-settings" onclick="switchAdminTab('settings')" class="py-2 px-4 border-b-2 border-transparent text-slate-400 hover:text-slate-200">Đổi Mật Khẩu</button>
+            </div>
+
+            <!-- Tab Content: Kết quả -->
+            <div id="admin-tab-results">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-xs text-slate-400">Danh sách lượt chơi đã lưu</span>
+                    <div class="space-x-2">
+                        <button onclick="exportToCSV()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-1.5 rounded-lg font-medium transition">
+                            <i class="fa-solid fa-file-excel mr-1"></i> Xuất CSV
+                        </button>
+                        <button onclick="clearResults()" class="bg-rose-600/80 hover:bg-rose-600 text-white text-xs px-3 py-1.5 rounded-lg font-medium transition">
+                            <i class="fa-solid fa-trash mr-1"></i> Xóa Lịch Sử
+                        </button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto max-h-80 border border-slate-700 rounded-xl">
+                    <table class="w-full text-xs text-left text-slate-300">
+                        <thead class="bg-slate-800 text-slate-400 uppercase text-[10px] sticky top-0">
+                            <tr>
+                                <th class="p-2.5">Thời gian</th>
+                                <th class="p-2.5">Mã SV</th>
+                                <th class="p-2.5">Họ Tên</th>
+                                <th class="p-2.5">Ngày Sinh</th>
+                                <th class="p-2.5 text-center">Điểm</th>
+                                <th class="p-2.5 text-center">Đúng</th>
+                            </tr>
+                        </thead>
+                        <tbody id="results-table-body" class="divide-y divide-slate-800"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab Content: Quản lý câu hỏi -->
+            <div id="admin-tab-questions" class="hidden">
+                <!-- Import Câu Hỏi -->
+                <div class="bg-indigo-950/40 p-3.5 rounded-xl border border-indigo-500/30 mb-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-xs font-bold text-indigo-300 uppercase tracking-wider flex items-center">
+                            <i class="fa-solid fa-file-import mr-1.5 text-indigo-400"></i> Import Câu Hỏi Từ File (.json, .csv)
+                        </h3>
+                        <div class="flex gap-2">
+                            <button onclick="downloadSampleWord()" class="text-[11px] text-amber-400 hover:underline flex items-center gap-1">
+                                <i class="fa-solid fa-file-word text-blue-400"></i> File mẫu .doc
+                            </button>
+                            <button onclick="downloadSampleCSV()" class="text-[11px] text-emerald-400 hover:underline flex items-center gap-1">
+                                <i class="fa-solid fa-file-csv text-emerald-400"></i> File mẫu .csv
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center gap-2">
+                        <input type="file" id="import-file-input" accept=".json, .csv" class="block w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-500 cursor-pointer">
+                        <button onclick="importQuestionsFromFile()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition">
+                            Tải Lên
+                        </button>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-1.5">
+                        * File CSV format: <code class="text-indigo-300">CauHoi, DapAnA, DapAnB, DapAnC, DapAnD, DapAnDung(A-D hoặc 0-3), GiaiThich</code>
+                    </p>
+                </div>
+
+                <!-- Form Thêm Câu Hỏi Thủ Công -->
+                <form id="add-question-form" onsubmit="addQuestion(event)" class="bg-slate-800/50 p-4 rounded-xl border border-slate-700 mb-4 space-y-3">
+                    <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider">Thêm câu hỏi thủ công</h3>
+                    <input type="text" id="new-q-text" placeholder="Nội dung câu hỏi..." required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white">
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="text" id="new-opt-0" placeholder="Đáp án A" required class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white">
+                        <input type="text" id="new-opt-1" placeholder="Đáp án B" required class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white">
+                        <input type="text" id="new-opt-2" placeholder="Đáp án C" required class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white">
+                        <input type="text" id="new-opt-3" placeholder="Đáp án D" required class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white">
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-0.5">Đáp án đúng</label>
+                            <select id="new-q-correct" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white">
+                                <option value="0">Đáp án A</option>
+                                <option value="1">Đáp án B</option>
+                                <option value="2">Đáp án C</option>
+                                <option value="3">Đáp án D</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-slate-400 mb-0.5">Giải thích</label>
+                            <input type="text" id="new-q-exp" placeholder="Giải thích đáp án..." required class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white">
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2 rounded-lg text-xs transition">
+                        <i class="fa-solid fa-plus mr-1"></i> Thêm Vào Ngân Hàng Câu Hỏi
+                    </button>
+                </form>
+
+                <div class="flex justify-between items-center mb-2">
+                    <div class="text-xs font-semibold">Danh sách câu hỏi hiện tại (<span id="q-count">0</span>):</div>
+                    <button onclick="clearAllQuestions()" class="text-[11px] text-rose-400 hover:underline">Xóa tất cả câu hỏi</button>
+                </div>
+                <div id="questions-list" class="space-y-2 max-h-48 overflow-y-auto pr-1"></div>
+            </div>
+
+            <!-- Tab Content: Đổi Mật Khẩu Admin -->
+            <div id="admin-tab-settings" class="hidden">
+                <form id="change-password-form" onsubmit="changeAdminPassword(event)" class="bg-slate-800/50 p-5 rounded-xl border border-slate-700 max-w-md mx-auto space-y-4">
+                    <h3 class="text-sm font-bold text-indigo-400 uppercase tracking-wider flex items-center">
+                        <i class="fa-solid fa-key mr-2"></i> Thay Đổi Mật Khẩu Admin
+                    </h3>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Mật Khẩu Hiện Tại</label>
+                        <input type="password" id="curr-pass" required placeholder="Nhập mật khẩu hiện tại" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Mật Khẩu Mới</label>
+                        <input type="password" id="new-pass" required placeholder="Nhập mật khẩu mới" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-300 mb-1">Xác Nhận Mật Khẩu Mới</label>
+                        <input type="password" id="confirm-pass" required placeholder="Nhập lại mật khẩu mới" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                    </div>
+                    <button type="submit" class="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold py-2.5 rounded-xl text-xs transition">
+                        Cập Nhật Mật Khẩu
+                    </button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Modal Đăng nhập Admin -->
+    <div id="admin-login-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="glass-panel w-full max-w-sm rounded-2xl p-6 border border-slate-700 text-center">
+            <h3 class="text-lg font-bold mb-2 text-indigo-400"><i class="fa-solid fa-lock mr-2"></i>Đăng Nhập Admin</h3>
+            <p class="text-xs text-slate-400 mb-4">Vui lòng nhập mật khẩu quản trị viên</p>
+            <input type="password" id="admin-password" placeholder="Nhập mật khẩu..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white mb-4 focus:outline-none focus:border-indigo-500">
+            <div class="flex space-x-2">
+                <button onclick="closeAdminModal()" class="w-1/2 bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-xl text-xs font-semibold">Hủy</button>
+                <button onclick="loginAdmin()" class="w-1/2 bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded-xl text-xs font-semibold">Đăng Nhập</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DỮ LIỆU CÂU HỎI MẶC ĐỊNH (Trích từ ONTAPCHHUONG3)
+        const defaultQuestions = [
+            {
+                q: "Theo tài liệu, khái niệm môi trường của một tổ chức liên quan tới:",
+                options: [
+                    "Những yếu tố nội bộ do nhà quản trị trực tiếp điều hành",
+                    "Những thể chế hay lực lượng bên ngoài tổ chức mà nhà quản trị khó kiểm soát",
+                    "Chỉ gồm các đối thủ cạnh tranh trên thị trường",
+                    "Các máy móc và quy trình công nghệ trong phân xưởng"
+                ],
+                correct: 1,
+                exp: "Môi trường liên quan tới những thể chế hay lực lượng từ bên ngoài tổ chức mà nhà quản trị khó kiểm soát nhưng ảnh hưởng trực tiếp/gián tiếp đến kết quả hoạt động."
+            },
+            {
+                q: "Môi trường đặc thù (vi mô) của tổ chức KHÔNG bao gồm yếu tố nào sau đây?",
+                options: [
+                    "Các nhà cung cấp vật liệu",
+                    "Khách hàng và đối thủ cạnh tranh",
+                    "Tỷ lệ lạm phát và chu kỳ kinh tế",
+                    "Các cơ quan nhà nước"
+                ],
+                correct: 2,
+                exp: "Tỷ lệ lạm phát và chu kỳ kinh tế thuộc về Môi trường vĩ mô (tổng quát)."
+            },
+            {
+                q: "Môi trường vĩ mô (tổng quát) có đặc điểm nào sau đây?",
+                options: [
+                    "Tác động trực tiếp đến duy nhất một tổ chức",
+                    "Do nhà quản trị hoàn toàn kiểm soát được",
+                    "Tác động một cách gián tiếp đến tất cả các tổ chức ở các lĩnh vực khác nhau",
+                    "Không có mối quan hệ hỗ tương giữa các yếu tố"
+                ],
+                correct: 2,
+                exp: "Môi trường vĩ mô bao gồm các yếu tố/lực lượng bên ngoài tác động một cách gián tiếp đến tất cả các tổ chức."
+            },
+            {
+                q: "Hiệu quả của sự tăng trưởng kinh tế được đo lường bằng bao nhiêu tiêu thức?",
+                options: ["2 tiêu thức", "3 tiêu thức", "4 tiêu thức", "5 tiêu thức"],
+                correct: 1,
+                exp: "Đo lường bằng 3 tiêu thức chính về sản lượng, năng suất và phát triển bền vững."
+            },
+            {
+                q: "Thứ tự 4 giai đoạn trong một chu kỳ kinh doanh là gì?",
+                options: [
+                    "Suy giảm -> Phát triển -> Trưởng thành -> Tiêu điều cực điểm",
+                    "Phát triển -> Trưởng thành -> Suy giảm -> Tiêu điều cực điểm",
+                    "Trưởng thành -> Phát triển -> Tiêu điều cực điểm -> Suy giảm",
+                    "Phát triển -> Suy giảm -> Trưởng thành -> Tiêu điều cực điểm"
+                ],
+                correct: 1,
+                exp: "Giai đoạn phát triển -> Giai đoạn trưởng thành -> Giai đoạn suy giảm -> Giai đoạn tiêu điều cực điểm."
+            }
+        ];
+
+        // Lấy hoặc khởi tạo dữ liệu từ LocalStorage
+        let questions = JSON.parse(localStorage.getItem('quiz_questions')) || defaultQuestions;
+        let gameResults = JSON.parse(localStorage.getItem('quiz_results')) || [];
+        let adminPassword = localStorage.getItem('admin_password') || 'admin123';
+
+        // Thông tin người chơi hiện tại
+        let currentPlayer = { name: '', id: '', dob: '' };
+
+        // TRẠNG THÁI GAME
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let correctAnswersCount = 0;
+        let timeoutAnswersCount = 0;
+        let timer = null;
+        let timeLeft = 30;
+        const totalTime = 30;
+
+        // DOM ELEMENTS
+        const startScreen = document.getElementById('start-screen');
+        const quizScreen = document.getElementById('quiz-screen');
+        const resultScreen = document.getElementById('result-screen');
+        const adminPanel = document.getElementById('admin-panel');
+        const questionText = document.getElementById('question-text');
+        const optionsContainer = document.getElementById('options-container');
+        const timerText = document.getElementById('timer-text');
+        const timerProgress = document.getElementById('timer-progress');
+        const timerContainer = document.getElementById('timer-container');
+        const scoreDisplay = document.getElementById('score-display');
+        const questionTracker = document.getElementById('question-tracker');
+        const explanationBox = document.getElementById('explanation-box');
+        const explanationText = document.getElementById('explanation-text');
+        const nextBtn = document.getElementById('next-btn');
+
+        function startGame(e) {
+            e.preventDefault();
+            
+            currentPlayer.name = document.getElementById('player-name').value.trim();
+            currentPlayer.id = document.getElementById('player-id').value.trim();
+            currentPlayer.dob = document.getElementById('player-dob').value;
+
+            if (questions.length === 0) {
+                alert("Hiện tại chưa có câu hỏi nào trong ngân hàng! Vui lòng liên hệ Admin.");
+                return;
+            }
+
+            currentQuestionIndex = 0;
+            score = 0;
+            correctAnswersCount = 0;
+            timeoutAnswersCount = 0;
+
+            startScreen.classList.add('hidden');
+            resultScreen.classList.add('hidden');
+            adminPanel.classList.add('hidden');
+            quizScreen.classList.remove('hidden');
+
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            clearInterval(timer);
+            explanationBox.classList.add('hidden');
+            nextBtn.classList.add('hidden');
+            timerContainer.classList.remove('pulse-danger');
+
+            const q = questions[currentQuestionIndex];
+            questionTracker.innerText = `Câu hỏi ${currentQuestionIndex + 1}/${questions.length}`;
+            scoreDisplay.innerText = `Điểm: ${score}`;
+            questionText.innerText = q.q;
+
+            optionsContainer.innerHTML = '';
+            q.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'btn-option w-full text-left p-3.5 rounded-xl bg-slate-800/60 border border-slate-700 hover:bg-slate-700/80 text-slate-200 font-medium flex items-center justify-between text-xs sm:text-sm';
+                btn.innerHTML = `<span>${opt}</span> <i class="fa-regular fa-circle text-slate-500 status-icon ml-2"></i>`;
+                btn.onclick = () => selectOption(idx);
+                optionsContainer.appendChild(btn);
+            });
+
+            startTimer();
+        }
+
+        function startTimer() {
+            timeLeft = totalTime;
+            timerText.innerText = timeLeft;
+            updateTimerCircle();
+
+            timer = setInterval(() => {
+                timeLeft--;
+                timerText.innerText = timeLeft;
+                updateTimerCircle();
+
+                if (timeLeft <= 5) {
+                    timerContainer.classList.add('pulse-danger');
+                }
+
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    handleTimeout();
+                }
+            }, 1000);
+        }
+
+        function updateTimerCircle() {
+            const circumference = 2 * Math.PI * 15.9155;
+            const offset = circumference - (timeLeft / totalTime) * circumference;
+            timerProgress.style.strokeDasharray = `${circumference}`;
+            timerProgress.style.strokeDashoffset = `${offset}`;
+
+            if (timeLeft <= 5) {
+                timerProgress.style.stroke = "#ef4444";
+            } else if (timeLeft <= 10) {
+                timerProgress.style.stroke = "#f59e0b";
+            } else {
+                timerProgress.style.stroke = "#6366f1";
+            }
+        }
+
+        function selectOption(selectedIndex) {
+            clearInterval(timer);
+            const q = questions[currentQuestionIndex];
+            const buttons = optionsContainer.querySelectorAll('button');
+
+            buttons.forEach((btn) => btn.disabled = true);
+
+            if (selectedIndex === q.correct) {
+                score += 10;
+                correctAnswersCount++;
+                buttons[selectedIndex].classList.remove('bg-slate-800/60', 'border-slate-700');
+                buttons[selectedIndex].classList.add('bg-emerald-600/30', 'border-emerald-500', 'text-emerald-200');
+                buttons[selectedIndex].querySelector('.status-icon').className = 'fa-solid fa-circle-check text-emerald-400 ml-2';
+            } else {
+                buttons[selectedIndex].classList.remove('bg-slate-800/60', 'border-slate-700');
+                buttons[selectedIndex].classList.add('bg-rose-600/30', 'border-rose-500', 'text-rose-200');
+                buttons[selectedIndex].querySelector('.status-icon').className = 'fa-solid fa-circle-xmark text-rose-400 ml-2';
+
+                buttons[q.correct].classList.remove('bg-slate-800/60', 'border-slate-700');
+                buttons[q.correct].classList.add('bg-emerald-600/30', 'border-emerald-500', 'text-emerald-200');
+                buttons[q.correct].querySelector('.status-icon').className = 'fa-solid fa-circle-check text-emerald-400 ml-2';
+            }
+
+            scoreDisplay.innerText = `Điểm: ${score}`;
+            showExplanation();
+        }
+
+        function handleTimeout() {
+            timeoutAnswersCount++;
+            const q = questions[currentQuestionIndex];
+            const buttons = optionsContainer.querySelectorAll('button');
+
+            buttons.forEach((btn) => btn.disabled = true);
+
+            buttons[q.correct].classList.remove('bg-slate-800/60', 'border-slate-700');
+            buttons[q.correct].classList.add('bg-emerald-600/30', 'border-emerald-500', 'text-emerald-200');
+            buttons[q.correct].querySelector('.status-icon').className = 'fa-solid fa-circle-check text-emerald-400 ml-2';
+
+            showExplanation();
+        }
+
+        function showExplanation() {
+            const q = questions[currentQuestionIndex];
+            explanationText.innerText = q.exp;
+            explanationBox.classList.remove('hidden');
+            nextBtn.classList.remove('hidden');
+        }
+
+        function nextQuestion() {
+            currentQuestionIndex++;
+            if (currentQuestionIndex < questions.length) {
+                loadQuestion();
+            } else {
+                endGame();
+            }
+        }
+
+        function endGame() {
+            quizScreen.classList.add('hidden');
+            resultScreen.classList.remove('hidden');
+
+            document.getElementById('result-player-info').innerText = `${currentPlayer.name} (${currentPlayer.id})`;
+            document.getElementById('final-score').innerText = score;
+            document.getElementById('correct-count').innerText = `${correctAnswersCount}/${questions.length}`;
+            document.getElementById('timeout-count').innerText = timeoutAnswersCount;
+
+            const newRecord = {
+                timestamp: new Date().toLocaleString('vi-VN'),
+                name: currentPlayer.name,
+                id: currentPlayer.id,
+                dob: currentPlayer.dob,
+                score: score,
+                correct: `${correctAnswersCount}/${questions.length}`
+            };
+
+            gameResults.unshift(newRecord);
+            localStorage.setItem('quiz_results', JSON.stringify(gameResults));
+        }
+
+        function restartGame() {
+            resultScreen.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+        }
+
+        // ================= ADMIN & MẬT KHẨU =================
+
+        function openAdminModal() {
+            document.getElementById('admin-login-modal').classList.remove('hidden');
+            document.getElementById('admin-login-modal').classList.add('flex');
+            document.getElementById('admin-password').value = '';
+            document.getElementById('admin-password').focus();
+        }
+
+        function closeAdminModal() {
+            document.getElementById('admin-login-modal').classList.add('hidden');
+            document.getElementById('admin-login-modal').classList.remove('flex');
+        }
+
+        function loginAdmin() {
+            const pwd = document.getElementById('admin-password').value;
+            if (pwd === adminPassword) {
+                closeAdminModal();
+                showAdminPanel();
+            } else {
+                alert('Mật khẩu Admin không chính xác!');
+            }
+        }
+
+        function changeAdminPassword(e) {
+            e.preventDefault();
+            const curr = document.getElementById('curr-pass').value;
+            const newP = document.getElementById('new-pass').value;
+            const confirmP = document.getElementById('confirm-pass').value;
+
+            if (curr !== adminPassword) {
+                alert('Mật khẩu hiện tại không đúng!');
+                return;
+            }
+
+            if (newP !== confirmP) {
+                alert('Mật khẩu mới và xác nhận mật khẩu không khớp!');
+                return;
+            }
+
+            adminPassword = newP;
+            localStorage.setItem('admin_password', newP);
+            alert('Đổi mật khẩu thành công!');
+            document.getElementById('change-password-form').reset();
+        }
+
+        function showAdminPanel() {
+            clearInterval(timer);
+            startScreen.classList.add('hidden');
+            quizScreen.classList.add('hidden');
+            resultScreen.classList.add('hidden');
+            adminPanel.classList.remove('hidden');
+
+            renderAdminResults();
+            renderAdminQuestions();
+        }
+
+        function closeAdminPanel() {
+            adminPanel.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+        }
+
+        function switchAdminTab(tab) {
+            const btnResults = document.getElementById('tab-btn-results');
+            const btnQuestions = document.getElementById('tab-btn-questions');
+            const btnSettings = document.getElementById('tab-btn-settings');
+            const tabResults = document.getElementById('admin-tab-results');
+            const tabQuestions = document.getElementById('admin-tab-questions');
+            const tabSettings = document.getElementById('admin-tab-settings');
+
+            btnResults.className = "py-2 px-4 border-b-2 border-transparent text-slate-400 hover:text-slate-200";
+            btnQuestions.className = "py-2 px-4 border-b-2 border-transparent text-slate-400 hover:text-slate-200";
+            btnSettings.className = "py-2 px-4 border-b-2 border-transparent text-slate-400 hover:text-slate-200";
+
+            tabResults.classList.add('hidden');
+            tabQuestions.classList.add('hidden');
+            tabSettings.classList.add('hidden');
+
+            if (tab === 'results') {
+                btnResults.className = "py-2 px-4 border-b-2 border-indigo-500 text-indigo-400 font-semibold";
+                tabResults.classList.remove('hidden');
+            } else if (tab === 'questions') {
+                btnQuestions.className = "py-2 px-4 border-b-2 border-indigo-500 text-indigo-400 font-semibold";
+                tabQuestions.classList.remove('hidden');
+            } else if (tab === 'settings') {
+                btnSettings.className = "py-2 px-4 border-b-2 border-indigo-500 text-indigo-400 font-semibold";
+                tabSettings.classList.remove('hidden');
+            }
+        }
+
+        function renderAdminResults() {
+            const tbody = document.getElementById('results-table-body');
+            tbody.innerHTML = '';
+
+            if (gameResults.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-500">Chưa có kết quả nào được ghi nhận.</td></tr>`;
+                return;
+            }
+
+            gameResults.forEach(res => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="p-2.5">${res.timestamp}</td>
+                    <td class="p-2.5 font-medium text-indigo-300">${res.id}</td>
+                    <td class="p-2.5 font-semibold text-slate-200">${res.name}</td>
+                    <td class="p-2.5">${res.dob}</td>
+                    <td class="p-2.5 text-center font-bold text-amber-400">${res.score}</td>
+                    <td class="p-2.5 text-center text-emerald-400">${res.correct}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function clearResults() {
+            if (confirm('Bạn có chắc chắn muốn xóa toàn bộ lịch sử chơi?')) {
+                gameResults = [];
+                localStorage.removeItem('quiz_results');
+                renderAdminResults();
+            }
+        }
+
+        function exportToCSV() {
+            if (gameResults.length === 0) {
+                alert('Không có dữ liệu để xuất!');
+                return;
+            }
+
+            let csv = '\uFEFF';
+            csv += 'Thoi gian,Ma SV,Ho Ten,Ngay Sinh,Diem,Cau Dung\n';
+
+            gameResults.forEach(r => {
+                csv += `"${r.timestamp}","${r.id}","${r.name}","${r.dob}",${r.score},"${r.correct}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Ket_Qua_Trac_Nghiem_${new Date().toISOString().slice(0, 10)}.csv`;
+            a.click();
+        }
+
+        function renderAdminQuestions() {
+            document.getElementById('q-count').innerText = questions.length;
+            const container = document.getElementById('questions-list');
+            container.innerHTML = '';
+
+            if (questions.length === 0) {
+                container.innerHTML = `<div class="text-center text-slate-500 text-xs py-3">Chưa có câu hỏi nào. Hãy thêm hoặc import câu hỏi mới!</div>`;
+                return;
+            }
+
+            questions.forEach((q, idx) => {
+                const item = document.createElement('div');
+                item.className = 'bg-slate-800/80 p-3 rounded-lg border border-slate-700 flex justify-between items-start text-xs';
+                item.innerHTML = `
+                    <div class="pr-2">
+                        <div class="font-semibold text-slate-200 mb-1">${idx + 1}. ${q.q}</div>
+                        <div class="text-slate-400 text-[11px] mb-1">Đáp án đúng: <span class="text-emerald-400 font-medium">${q.options[q.correct]}</span></div>
+                        <div class="text-slate-500 text-[10px]">Giải thích: ${q.exp}</div>
+                    </div>
+                    <button onclick="deleteQuestion(${idx})" class="text-rose-400 hover:text-rose-300 p-1"><i class="fa-solid fa-trash"></i></button>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function addQuestion(e) {
+            e.preventDefault();
+            const qText = document.getElementById('new-q-text').value.trim();
+            const opt0 = document.getElementById('new-opt-0').value.trim();
+            const opt1 = document.getElementById('new-opt-1').value.trim();
+            const opt2 = document.getElementById('new-opt-2').value.trim();
+            const opt3 = document.getElementById('new-opt-3').value.trim();
+            const correct = parseInt(document.getElementById('new-q-correct').value);
+            const exp = document.getElementById('new-q-exp').value.trim();
+
+            const newQ = {
+                q: qText,
+                options: [opt0, opt1, opt2, opt3],
+                correct: correct,
+                exp: exp
+            };
+
+            questions.push(newQ);
+            localStorage.setItem('quiz_questions', JSON.stringify(questions));
+
+            document.getElementById('add-question-form').reset();
+            renderAdminQuestions();
+            alert('Thêm câu hỏi thành công!');
+        }
+
+        function deleteQuestion(index) {
+            if (confirm('Bạn có chắc chắn muốn xóa câu hỏi này?')) {
+                questions.splice(index, 1);
+                localStorage.setItem('quiz_questions', JSON.stringify(questions));
+                renderAdminQuestions();
+            }
+        }
+
+        function clearAllQuestions() {
+            if (confirm('Bạn có chắc chắn muốn xóa TOÀN BỘ ngân hàng câu hỏi hiện tại không?')) {
+                questions = [];
+                localStorage.setItem('quiz_questions', JSON.stringify(questions));
+                renderAdminQuestions();
+            }
+        }
+
+        // ================= IMPORT & FILE DOWNLOADS =================
+
+        function importQuestionsFromFile() {
+            const fileInput = document.getElementById('import-file-input');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert("Vui lòng chọn một file (.json hoặc .csv)!");
+                return;
+            }
+
+            const fileExtension = file.name.split('.').pop().toLowerCase();
+            const reader = new FileReader();
+
+            reader.onload = function (e) {
+                const content = e.target.result;
+                let importedQuestions = [];
+
+                try {
+                    if (fileExtension === 'json') {
+                        importedQuestions = JSON.parse(content);
+                        if (!Array.isArray(importedQuestions)) {
+                            throw new Error("File JSON phải chứa một danh sách (Array) các câu hỏi.");
+                        }
+                    } else if (fileExtension === 'csv') {
+                        importedQuestions = parseCSVQuestions(content);
+                    } else {
+                        alert("Định dạng file không hỗ trợ! Hãy chọn file .json hoặc .csv");
+                        return;
+                    }
+
+                    const validQuestions = importedQuestions.filter(q => 
+                        q.q && Array.isArray(q.options) && q.options.length === 4 &&
+                        typeof q.correct === 'number' && q.correct >= 0 && q.correct <= 3
+                    );
+
+                    if (validQuestions.length === 0) {
+                        alert("Không tìm thấy câu hỏi hợp lệ nào trong file! Vui lòng kiểm tra định dạng dữ liệu.");
+                        return;
+                    }
+
+                    questions = questions.concat(validQuestions);
+                    localStorage.setItem('quiz_questions', JSON.stringify(questions));
+                    renderAdminQuestions();
+
+                    alert(`Thành công import ${validQuestions.length} câu hỏi mới!`);
+                    fileInput.value = '';
+                } catch (err) {
+                    alert("Lỗi khi đọc file: " + err.message);
+                }
+            };
+
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        function parseCSVQuestions(csvText) {
+            const lines = csvText.split(/\r\n|\n/);
+            const parsed = [];
+
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+
+                const columns = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || line.split(',');
+                const cleanCols = columns.map(col => col.replace(/^"|"$/g, '').trim());
+
+                if (cleanCols.length >= 6) {
+                    const qText = cleanCols[0];
+                    const optA = cleanCols[1];
+                    const optB = cleanCols[2];
+                    const optC = cleanCols[3];
+                    const optD = cleanCols[4];
+                    let correctVal = cleanCols[5].toUpperCase();
+                    let correctIdx = 0;
+
+                    if (['A', 'B', 'C', 'D'].includes(correctVal)) {
+                        correctIdx = ['A', 'B', 'C', 'D'].indexOf(correctVal);
+                    } else {
+                        correctIdx = parseInt(correctVal) || 0;
+                    }
+
+                    const expText = cleanCols[6] || 'Chưa có giải thích.';
+
+                    parsed.push({
+                        q: qText,
+                        options: [optA, optB, optC, optD],
+                        correct: Math.min(Math.max(correctIdx, 0), 3),
+                        exp: expText
+                    });
+                }
+            }
+            return parsed;
+        }
+
+        function downloadSampleWord() {
+            const wordContent = `
+                <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+                <head>
+                    <meta charset='utf-8'>
+                    <title>Mẫu Câu Hỏi Trắc Nghiệm</title>
+                    <style>
+                        body { font-family: 'Times New Roman', serif; font-size: 12pt; line-height: 1.5; }
+                        h2 { text-align: center; color: #1e1b4b; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+                        th, td { border: 1px solid #000; padding: 8px; text-align: left; }
+                        th { background-color: #f2f2f2; }
+                    </style>
+                </head>
+                <body>
+                    <h2>BẢNG CÂU HỎI MẪU TRẮC NGHIỆM</h2>
+                    <p><i>Lưu ý: Bạn có thể lưu bảng này thành file CSV để Import vào hệ thống.</i></p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>CauHoi</th>
+                                <th>DapAnA</th>
+                                <th>DapAnB</th>
+                                <th>DapAnC</th>
+                                <th>DapAnD</th>
+                                <th>DapAnDung</th>
+                                <th>GiaiThich</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Khái niệm môi trường của một tổ chức liên quan tới?</td>
+                                <td>Các yếu tố nội bộ</td>
+                                <td>Các thể chế hay lực lượng bên ngoài</td>
+                                <td>Các đối thủ cạnh tranh</td>
+                                <td>Thiết bị công nghệ</td>
+                                <td>B</td>
+                                <td>Môi trường bao gồm các lực lượng bên ngoài tác động tới tổ chức.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </body>
+                </html>
+            `;
+
+            const blob = new Blob(['\ufeff', wordContent], { type: 'application/msword' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'Mau_Cau_Hoi_Trac_Nghiem.doc';
+            a.click();
+        }
+
+        function downloadSampleCSV() {
+            const csvContent = "\uFEFF" + `CauHoi,DapAnA,DapAnB,DapAnC,DapAnD,DapAnDung,GiaiThich
+"Theo tài liệu, khái niệm môi trường của một tổ chức liên quan tới:","Những yếu tố nội bộ do nhà quản trị trực tiếp điều hành","Những thể chế hay lực lượng bên ngoài tổ chức mà nhà quản trị khó kiểm soát","Chỉ gồm các đối thủ cạnh tranh trên thị trường","Các máy móc và quy trình công nghệ trong phân xưởng","B","Môi trường liên quan tới những thể chế hay lực lượng từ bên ngoài tổ chức mà nhà quản trị khó kiểm soát nhưng ảnh hưởng trực tiếp/gián tiếp đến kết quả hoạt động."
+"Môi trường đặc thù (vi mô) của tổ chức KHÔNG bao gồm yếu tố nào sau đây?","Các nhà cung cấp vật liệu","Khách hàng và đối thủ cạnh tranh","Tỷ lệ lạm phát và chu kỳ kinh tế","Các cơ quan nhà nước","C","Tỷ lệ lạm phát và chu kỳ kinh tế thuộc về Môi trường vĩ mô (tổng quát)."`;
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", "Mau_Cau_Hoi_Trac_Nghiem.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
